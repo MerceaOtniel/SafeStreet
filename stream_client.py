@@ -5,6 +5,7 @@ import logging
 import collections
 import copy
 import _thread
+import threading
 import tensorflow as tf
 
 global graph, model
@@ -91,18 +92,25 @@ def main(url=0):
             # prediction
             np_array = np.array([np.array(q)])
             if i % 50 == 0:
-                thread.start_new_thread(thread1, (np_array,))
-                thread.start_new_thread(thread2, (np_array,))
-                thread.start_new_thread(thread3, (np_array,))
+                threads = []
+                t = threading.Thread(target=thread1, args=(np_array, ))
+                t.start()
+                threads.append(t)
+                t1 = threading.Thread(target=thread2, args=(np_array, ))
+                threads.append(t1)
+                t1.start()
+                t2 = threading.Thread(target=thread3, args=(np_array,))
+                threads.append(t2)
+                t2.start()
                 q = collections.deque(maxlen=MAX_FRAMES_SENT)
+                for t in threads:
+                    t.join()
+
                 medie = (primaval + douaval + treiaval) / 3
                 print("medie =")
                 print(primaval)
                 print(douaval)
                 print(treiaval)
-                print(primaloss)
-                print(doualoss)
-                print(treialoss)
                 if medie > 0.5:
                     print("FIGHT %s thread2" % medie)
                 else:
@@ -110,7 +118,7 @@ def main(url=0):
 
             if cv2.waitKey(22) & 0xFF == ord('q'):
                 break
-            yield frames
+            yield frame
         else:
             logging.warning("failed frame no %s" % failed_frames)
             # handle the loss of connectivity scenario
